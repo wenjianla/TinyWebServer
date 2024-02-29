@@ -3,9 +3,9 @@
 int main(int argc, char *argv[])
 {
     //需要修改的数据库信息,登录名,密码,库名
-    string user = "root";
-    string passwd = "root";
-    string databasename = "qgydb";
+    string user = "wenjian";
+    string passwd = "0725";
+    string databasename = "tinywebserver_db";
 
     //命令行解析
     Config config;
