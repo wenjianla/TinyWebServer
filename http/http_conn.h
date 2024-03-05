@@ -122,8 +122,8 @@ private:
     int m_start_line;
     char m_write_buf[WRITE_BUFFER_SIZE];
     int m_write_idx;
-    CHECK_STATE m_check_state;
-    METHOD m_method;
+    CHECK_STATE m_check_state;/// 主状态机当前所处的状态
+    METHOD m_method;/// 请求方法
     char m_real_file[FILENAME_LEN];
     char *m_url;
     char *m_version;

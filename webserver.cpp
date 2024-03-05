@@ -74,10 +74,10 @@ void WebServer::trig_mode()
 
 void WebServer::log_write()
 {
-    if (0 == m_close_log)
+    if (0 == m_close_log)/// m_close_log默认为0
     {
         //初始化日志
-        if (1 == m_log_write)
+        if (1 == m_log_write)/// m_log_write默认为0 同步方式写
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 800);
         else
             Log::get_instance()->init("./ServerLog", m_close_log, 2000, 800000, 0);
@@ -103,55 +103,57 @@ void WebServer::thread_pool()
 void WebServer::eventListen()
 {
     //网络编程基础步骤
-    m_listenfd = socket(PF_INET, SOCK_STREAM, 0);
+    m_listenfd = socket(PF_INET, SOCK_STREAM, 0);//创建socket 监听文件描述符  PF_INET:IPV4  SOCK_STREAM:TCP
     assert(m_listenfd >= 0);
 
     //优雅关闭连接
-    if (0 == m_OPT_LINGER)
+    if (0 == m_OPT_LINGER) //优雅关闭链接，默认不使用
     {
         struct linger tmp = {0, 1};
-        setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
+        setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));/// 设置SO_LINGER 即优雅关闭链接
+        ///目前表示在关闭套接字时，l_onoff 为 0 表示立即关闭，而 l_linger 的值为 1 意味着并不等待未发送的数据，直接关闭套接字。
+        ///{1,1}表示在调用 close 函数关闭套接字时，系统将等待最多1秒，以确保数据被发送或确认
     }
     else if (1 == m_OPT_LINGER)
     {
         struct linger tmp = {1, 1};
-        setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));
+        setsockopt(m_listenfd, SOL_SOCKET, SO_LINGER, &tmp, sizeof(tmp));//// SO_LINGER 用于控制close系统调用在关闭TCP连接时的行为
     }
 
     int ret = 0;
-    struct sockaddr_in address;
-    bzero(&address, sizeof(address));
-    address.sin_family = AF_INET;
-    address.sin_addr.s_addr = htonl(INADDR_ANY);
-    address.sin_port = htons(m_port);
+    struct sockaddr_in address;/// struct sockaddr_in 是用于表示 IPv4 地址的数据结构 用于存储 IP 地址和端口号的信息
+    bzero(&address, sizeof(address));/// 将一块内存区域清零, 更推荐memset函数
+    address.sin_family = AF_INET;/// 地址族  AF_INET:IPv4
+    address.sin_addr.s_addr = htonl(INADDR_ANY);/// IPv4地址  INADDR_ANY:
+    address.sin_port = htons(m_port);/// 端口号
 
     int flag = 1;
-    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));
-    ret = bind(m_listenfd, (struct sockaddr *)&address, sizeof(address));
+    setsockopt(m_listenfd, SOL_SOCKET, SO_REUSEADDR, &flag, sizeof(flag));/// SO_REUSEADDR 用于在套接字关闭后立即释放该端口
+    ret = bind(m_listenfd, (struct sockaddr *)&address, sizeof(address));/// bind 函数，用于将一个套接字与特定的地址（IP地址和端口号）关联起来
     assert(ret >= 0);
-    ret = listen(m_listenfd, 5);
+    ret = listen(m_listenfd, 5);/// 这里的5是指的是允许的最大连接数
     assert(ret >= 0);
 
-    utils.init(TIMESLOT);
+    utils.init(TIMESLOT);/// 初始化定时器
 
     //epoll创建内核事件表
-    epoll_event events[MAX_EVENT_NUMBER];
-    m_epollfd = epoll_create(5);
+    epoll_event events[MAX_EVENT_NUMBER];/// 这里，服务器通过epoll这种I/O复用技术（还有select和poll）来实现对监听socket（listenfd）和连接socket（客户请求）的同时监听
+    m_epollfd = epoll_create(5);/// 创建一个epoll句柄，size用来告诉内核这个监听的数目一共有多大
     assert(m_epollfd != -1);
 
     utils.addfd(m_epollfd, m_listenfd, false, m_LISTENTrigmode);
     http_conn::m_epollfd = m_epollfd;
 
-    ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);
+    ret = socketpair(PF_UNIX, SOCK_STREAM, 0, m_pipefd);/// socketpair函数用于创建一对相互连接的套接字的系统调用。这对套接字可以用于进程间通信（IPC）
     assert(ret != -1);
     utils.setnonblocking(m_pipefd[1]);
-    utils.addfd(m_epollfd, m_pipefd[0], false, 0);
+    utils.addfd(m_epollfd, m_pipefd[0], false, 0);/// 将 m_pipefd[0] 添加到 m_epollfd 中进行监听，使用默认的触发模式（0）
 
-    utils.addsig(SIGPIPE, SIG_IGN);
-    utils.addsig(SIGALRM, utils.sig_handler, false);
-    utils.addsig(SIGTERM, utils.sig_handler, false);
+    utils.addsig(SIGPIPE, SIG_IGN);/// 忽略 SIGPIPE 通常是为了避免进程在写入一个已经关闭的套接字时收到该信号而终止
+    utils.addsig(SIGALRM, utils.sig_handler, false);/// SIGALRM 信号是一种定时器信号，它是由定时器超时产生的，用来通知目标进程在指定时间内完成某个操作
+    utils.addsig(SIGTERM, utils.sig_handler, false);///SIGTERM 信号是一种软件终止信号，它是由系统管理员或者其他进程发送给目标进程的，用来请求目标进程正常退出
 
-    alarm(TIMESLOT);
+    alarm(TIMESLOT);/// alarm函数用来设置一个定时器，当定时器超时时，会产生一个SIGALRM信号，如果之前设置过定时器，那么之前的定时器会被新的定时器替换
 
     //工具类,信号和描述符基础操作
     Utils::u_pipefd = m_pipefd;
@@ -201,8 +203,9 @@ bool WebServer::dealclientdata()
 {
     struct sockaddr_in client_address;
     socklen_t client_addrlength = sizeof(client_address);
-    if (0 == m_LISTENTrigmode)
+    if (0 == m_LISTENTrigmode)/// LT模式
     {
+        ///accept()返回一个新的socket文件描述符用于send()和recv()，原来的socket文件描述符仍然可以用于accept()，直到调用close()关闭
         int connfd = accept(m_listenfd, (struct sockaddr *)&client_address, &client_addrlength);
         if (connfd < 0)
         {
@@ -215,12 +218,12 @@ bool WebServer::dealclientdata()
             LOG_ERROR("%s", "Internal server busy");
             return false;
         }
-        timer(connfd, client_address);
+        timer(connfd, client_address);/// timer函数
     }
 
     else
     {
-        while (1)
+        while (1)/* ET模式 */
         {
             int connfd = accept(m_listenfd, (struct sockaddr *)&client_address, &client_addrlength);
             if (connfd < 0)
@@ -257,7 +260,7 @@ bool WebServer::dealwithsignal(bool &timeout, bool &stop_server)
     }
     else
     {
-        for (int i = 0; i < ret; ++i)
+        for (int i = 0; i < ret; ++i)/// ret是接收到的信号数目
         {
             switch (signals[i])
             {
@@ -282,7 +285,7 @@ void WebServer::dealwithread(int sockfd)
     util_timer *timer = users_timer[sockfd].timer;
 
     //reactor
-    if (1 == m_actormodel)
+    if (1 == m_actormodel)/// m_actormodel默认是0
     {
         if (timer)
         {
@@ -381,16 +384,16 @@ void WebServer::eventLoop()
 
     while (!stop_server)
     {
-        int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);
+        int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);/// 主线程调用epoll_wait等待一组文件描述符上的事件，并将当前所有就绪的epoll_event复制到events数组中 
         if (number < 0 && errno != EINTR)
         {
             LOG_ERROR("%s", "epoll failure");
             break;
         }
 
-        for (int i = 0; i < number; i++)
+        for (int i = 0; i < number; i++)/// 这里的number是epoll_wait返回的就绪事件数目 当listen到新的用户连接，listenfd上则产生就绪事件
         {
-            int sockfd = events[i].data.fd;
+            int sockfd = events[i].data.fd; // 事件表中就绪的socket文件描述符
 
             //处理新到的客户连接
             if (sockfd == m_listenfd)
@@ -399,6 +402,7 @@ void WebServer::eventLoop()
                 if (false == flag)
                     continue;
             }
+            /// 如有异常，则直接关闭客户连接，并删除该用户的timer
             else if (events[i].events & (EPOLLRDHUP | EPOLLHUP | EPOLLERR))
             {
                 //服务器端关闭连接，移除对应的定时器
@@ -406,18 +410,19 @@ void WebServer::eventLoop()
                 deal_timer(timer, sockfd);
             }
             //处理信号
-            else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))
+            /// 其中 m_pipefd[0] 是管道的读端，而 m_pipefd[1] 是写端。当向管道的写端写入一个字节时，读端会收到可读事件，并且通过这个机制可以实现信号的通知。
+            else if ((sockfd == m_pipefd[0]) && (events[i].events & EPOLLIN))// 
             {
                 bool flag = dealwithsignal(timeout, stop_server);
                 if (false == flag)
                     LOG_ERROR("%s", "dealclientdata failure");
             }
             //处理客户连接上接收到的数据
-            else if (events[i].events & EPOLLIN)
+            else if (events[i].events & EPOLLIN)/// 读事件
             {
                 dealwithread(sockfd);
             }
-            else if (events[i].events & EPOLLOUT)
+            else if (events[i].events & EPOLLOUT)/// 写事件
             {
                 dealwithwrite(sockfd);
             }

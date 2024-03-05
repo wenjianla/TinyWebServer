@@ -14,12 +14,12 @@ class Log
 {
 public:
     //C++11以后,使用局部变量懒汉不用加锁
-    static Log *get_instance()
+    static Log *get_instance()// 静态成员变量，所有对象共享，只有一份内存
     {
         static Log instance;
         return &instance;
     }
-
+    /// 异步写日志公有方法，调用私有方法async_write_log
     static void *flush_log_thread(void *args)
     {
         Log::get_instance()->async_write_log();
@@ -32,9 +32,9 @@ public:
     void flush(void);
 
 private:
-    Log();
+    Log();// 私有构造函数， 不能被外部调用
     virtual ~Log();
-    void *async_write_log()
+    void *async_write_log()/// 异步写日志方法
     {
         string single_log;
         //从阻塞队列中取出一个日志string，写入文件
@@ -56,7 +56,7 @@ private:
     FILE *m_fp;         //打开log的文件指针
     char *m_buf;
     block_queue<string> *m_log_queue; //阻塞队列
-    bool m_is_async;                  //是否同步标志位
+    bool m_is_async;                  //是否同步标志位， 默认是同步
     locker m_mutex;
     int m_close_log; //关闭日志
 };

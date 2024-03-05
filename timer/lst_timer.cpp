@@ -153,7 +153,7 @@ void Utils::init(int timeslot)
 //对文件描述符设置非阻塞
 int Utils::setnonblocking(int fd)
 {
-    int old_option = fcntl(fd, F_GETFL);
+    int old_option = fcntl(fd, F_GETFL);/// fcntl 是文件描述符的控制函数，可以改变已打开的文件性质
     int new_option = old_option | O_NONBLOCK;
     fcntl(fd, F_SETFL, new_option);
     return old_option;
@@ -164,16 +164,23 @@ void Utils::addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
 {
     epoll_event event;
     event.data.fd = fd;
+/*    //触发组合模式,默认listenfd LT + connfd LT
+    TRIGMode = 0;
 
+    //listenfd触发模式，默认LT
+    LISTENTrigmode = 0;
+
+    //connfd触发模式，默认LT
+    CONNTrigmode = 0;*/
     if (1 == TRIGMode)
-        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;
+        event.events = EPOLLIN | EPOLLET | EPOLLRDHUP;/// ET模式, 边缘触发  EPOLLRDHUP表示连接关闭事件
     else
-        event.events = EPOLLIN | EPOLLRDHUP;
+        event.events = EPOLLIN | EPOLLRDHUP;/// LT模式，水平出发 EPOLLRDHUP表示连接关闭事件
 
     if (one_shot)
-        event.events |= EPOLLONESHOT;
-    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);
-    setnonblocking(fd);
+        event.events |= EPOLLONESHOT;/// 用于指定在一个文件描述符上的事件只会触发一次，触发后需要重新注册该文件描述符才能再次监听
+    epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);/// epoll_ctl 用于向 epoll 实例中注册、修改或删除感兴趣的文件描述符及其关联的事件。
+    setnonblocking(fd);/// 设置非阻塞的作用是为了在读写数据时不会阻塞
 }
 
 //信号处理函数
@@ -194,7 +201,7 @@ void Utils::addsig(int sig, void(handler)(int), bool restart)
     sa.sa_handler = handler;
     if (restart)
         sa.sa_flags |= SA_RESTART;
-    sigfillset(&sa.sa_mask);
+    sigfillset(&sa.sa_mask);/// 初始化信号集，将所有信号加入到信号集中
     assert(sigaction(sig, &sa, NULL) != -1);
 }
 
@@ -217,8 +224,8 @@ int Utils::u_epollfd = 0;
 class Utils;
 void cb_func(client_data *user_data)
 {
-    epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);
+    epoll_ctl(Utils::u_epollfd, EPOLL_CTL_DEL, user_data->sockfd, 0);/// 从 epollfd 中删除 sockfd
     assert(user_data);
-    close(user_data->sockfd);
+    close(user_data->sockfd);/// 关闭 sockfd
     http_conn::m_user_count--;
 }

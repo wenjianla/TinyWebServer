@@ -30,6 +30,10 @@ bool Log::init(const char *file_name, int close_log, int log_buf_size, int split
         pthread_t tid;
         //flush_log_thread为回调函数,这里表示创建线程异步写日志
         pthread_create(&tid, NULL, flush_log_thread, NULL);
+        // tid是新线程的标识符
+        // NULL表示使用默认的线程属性
+        // flush_log_thread是线程运行函数的起始地址，即线程将从这个函数开始执行。 且要求是静态函数
+        // 后一个NULL是flush_log_thread中的参数，这里表示不传递参数
     }
     
     m_close_log = close_log;
@@ -154,7 +158,7 @@ void Log::write_log(int level, const char *format, ...)
 
     va_end(valst);
 }
-
+// 强制刷新写入流缓冲区
 void Log::flush(void)
 {
     m_mutex.lock();
