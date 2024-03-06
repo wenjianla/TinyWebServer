@@ -383,7 +383,8 @@ void WebServer::eventLoop()
     bool stop_server = false;
 
     while (!stop_server)
-    {
+    {   
+         // 第4个参数-1是表示阻塞，直到有事件发生， 0：立即返回，非阻塞， >0：等待指定时间
         int number = epoll_wait(m_epollfd, events, MAX_EVENT_NUMBER, -1);/// 主线程调用epoll_wait等待一组文件描述符上的事件，并将当前所有就绪的epoll_event复制到events数组中 
         if (number < 0 && errno != EINTR)
         {

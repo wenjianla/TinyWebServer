@@ -77,7 +77,7 @@ public:
 
     //定时器相关
     client_data *users_timer;/// 定时器数组
-    Utils utils;
+    Utils utils;// 定时器工具类
 };
 #endif
  

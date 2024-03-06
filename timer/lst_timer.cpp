@@ -181,6 +181,16 @@ void Utils::addfd(int epollfd, int fd, bool one_shot, int TRIGMode)
         event.events |= EPOLLONESHOT;/// 用于指定在一个文件描述符上的事件只会触发一次，触发后需要重新注册该文件描述符才能再次监听
     epoll_ctl(epollfd, EPOLL_CTL_ADD, fd, &event);/// epoll_ctl 用于向 epoll 实例中注册、修改或删除感兴趣的文件描述符及其关联的事件。
     setnonblocking(fd);/// 设置非阻塞的作用是为了在读写数据时不会阻塞
+    /**
+    events描述事件类型，其中epoll事件类型有以下几种
+        EPOLLIN：表示对应的文件描述符可以读（包括对端SOCKET正常关闭）
+        EPOLLOUT：表示对应的文件描述符可以写
+        EPOLLPRI：表示对应的文件描述符有紧急的数据可读（这里应该表示有带外数据到来）
+        EPOLLERR：表示对应的文件描述符发生错误
+        EPOLLHUP：表示对应的文件描述符被挂断；
+        EPOLLET：将EPOLL设为边缘触发(Edge Triggered)模式，这是相对于水平触发(Level Triggered)而言的
+        EPOLLONESHOT：只监听一次事件，当监听完这次事件之后，如果还需要继续监听这个socket的话，需要再次把这个socket加入到EPOLL队列里
+    */
 }
 
 //信号处理函数
