@@ -3,7 +3,7 @@
 #include <mysql/mysql.h>
 #include <fstream>
 
-//定义http响应的一些状态信息
+//定义http响应的一些状态信息 对应状态码
 const char *ok_200_title = "OK";
 const char *error_400_title = "Bad Request";
 const char *error_400_form = "Your request has bad syntax or is inherently impossible to staisfy.\n";
